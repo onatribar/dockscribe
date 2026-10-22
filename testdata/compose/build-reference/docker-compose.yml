@@ -1,0 +1,17 @@
+services:
+  missing-dockerfile:
+    build:
+      context: .
+      dockerfile: Dockerfile.missing
+
+  bad-target:
+    build:
+      context: .
+      target: nonexistent-stage
+
+  root-override:
+    build: .
+    user: root
+
+  fine:
+    build: .

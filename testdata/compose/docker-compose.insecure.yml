@@ -1,0 +1,23 @@
+services:
+  debug-shell:
+    image: alpine:latest
+    privileged: true
+    network_mode: host
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_ADMIN
+    ports:
+      - "2222:22"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/user/.aws:/root/.aws
+
+  app:
+    image: myorg/app:latest
+    environment:
+      DB_PASSWORD: hunter2placeholder
+      AWS_KEY: "AKIAIOSFODNN7EXAMPLE"
+
+  legacy-worker:
+    image: node:14

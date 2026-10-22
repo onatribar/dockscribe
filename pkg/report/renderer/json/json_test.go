@@ -26,9 +26,6 @@ func TestRenderProducesValidJSON(t *testing.T) {
 		t.Fatalf("Render: %v", err)
 	}
 
-	// Severity only implements MarshalJSON (output is write-only, e.g. for CI
-	// tooling to consume), so decode into a generic map rather than
-	// report.Report.
 	var raw map[string]any
 	if err := json.Unmarshal(buf.Bytes(), &raw); err != nil {
 		t.Fatalf("output is not valid JSON: %v\n%s", err, buf.String())
