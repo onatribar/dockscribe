@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/onatribar/dockscribe/pkg/analyzer"
-	"github.com/onatribar/dockscribe/pkg/parser"
 	"github.com/onatribar/dockscribe/pkg/parser/dockerfile"
 )
 
@@ -15,8 +14,8 @@ func New() *Analyzer { return &Analyzer{} }
 
 func (a *Analyzer) Name() string { return "explanation" }
 
-func (a *Analyzer) Analyze(f parser.ParsedFile) ([]analyzer.Finding, error) {
-	df, ok := f.(*dockerfile.File)
+func (a *Analyzer) Analyze(ctx analyzer.Context) ([]analyzer.Finding, error) {
+	df, ok := ctx.File.(*dockerfile.File)
 	if !ok {
 		return nil, nil
 	}
@@ -92,10 +91,8 @@ func explainFrom(instr dockerfile.Instruction, df *dockerfile.File) string {
 	return fmt.Sprintf("Base image: %s.", instr.Args)
 }
 
-// describes a COPY or ADD instruction in terms of its
-// sources, destination, and any --from stage reference
 func explainCopyAdd(verb, args string, isAdd bool) string {
-	flags, positional := splitFlags(args)
+	flags, positional := dockerfile.SplitFlags(args)
 	if len(positional) == 0 {
 		return fmt.Sprintf("%s files into the image.", verb)
 	}
@@ -142,21 +139,4 @@ func explainArg(args string) string {
 		return fmt.Sprintf("Declares build argument %s with default %q.", args[:i], args[i+1:])
 	}
 	return fmt.Sprintf("Declares build argument %s (no default).", args)
-}
-
-// separates leading "--flag" or "--flag=value" tokens from positional arguments.
-func splitFlags(args string) (flags map[string]string, positional []string) {
-	flags = map[string]string{}
-	for _, field := range strings.Fields(args) {
-		if !strings.HasPrefix(field, "--") {
-			positional = append(positional, field)
-			continue
-		}
-		if i := strings.IndexByte(field, '='); i >= 0 {
-			flags[field[:i]] = field[i+1:]
-		} else {
-			flags[field] = ""
-		}
-	}
-	return flags, positional
 }

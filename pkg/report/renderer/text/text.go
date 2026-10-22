@@ -14,12 +14,10 @@ import (
 
 const separator = "---"
 
-// Renderer writes a Report as plain text.
 type Renderer struct {
 	Out io.Writer
 }
 
-// New returns a text Renderer that writes to out.
 func New(out io.Writer) *Renderer {
 	return &Renderer{Out: out}
 }
@@ -31,12 +29,13 @@ var sections = []struct {
 	{"EXPLANATION", analyzer.CategoryExplanation},
 	{"SECURITY", analyzer.CategorySecurity},
 	{"PERFORMANCE", analyzer.CategoryPerformance},
+	{"SUPPRESSION", analyzer.CategorySuppression},
 }
 
 func (r *Renderer) Render(rep report.Report) error {
 	w := r.Out
 
-	fmt.Fprintf(w, "File: %s (%d lines, %d stage%s)\n", rep.File, rep.LineCount, rep.Stages, plural(rep.Stages))
+	fmt.Fprintf(w, "File: %s (%d lines%s)\n", rep.File, rep.LineCount, stageSuffix(rep))
 
 	byCategory := groupByCategory(rep.Findings)
 	for _, s := range sections {
@@ -57,6 +56,7 @@ func (r *Renderer) Render(rep report.Report) error {
 	fmt.Fprintln(w, separator)
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "Summary: %s\n", summarize(rep.Findings))
+	fmt.Fprintf(w, "Score: %d/100 (%s)\n", rep.Score, rep.Grade)
 
 	return nil
 }
@@ -95,6 +95,15 @@ func summarize(findings []analyzer.Finding) string {
 		}
 	}
 	return fmt.Sprintf("%d error%s, %d warning%s, %d info", errs, plural(errs), warns, plural(warns), infos)
+}
+
+// A compose file has services, not stages, so this is empty outside
+// dockerfile reports.
+func stageSuffix(rep report.Report) string {
+	if rep.FileType != "dockerfile" {
+		return ""
+	}
+	return fmt.Sprintf(", %d stage%s", rep.Stages, plural(rep.Stages))
 }
 
 func plural(n int) string {
