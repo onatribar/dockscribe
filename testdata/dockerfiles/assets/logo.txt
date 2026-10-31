@@ -1,0 +1,1 @@
+placeholder asset for the inefficient.Dockerfile fixture's ADD ./assets instruction
