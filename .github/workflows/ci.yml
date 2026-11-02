@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: build, vet, staticcheck, test, fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          staticcheck ./...
+
+      - name: gofmt check
+        run: |
+          fmt_out="$(gofmt -l .)"
+          if [ -n "$fmt_out" ]; then
+            echo "The following files are not gofmt'd:"
+            echo "$fmt_out"
+            exit 1
+          fi
+
+      - name: Test (with race detector)
+        run: go test ./... -count=1 -race -v
+
+      - name: dockscribe self-check
+        run: |
+          go build -o /tmp/dockscribe .
+          /tmp/dockscribe --format json --fail-on never testdata/ > /dev/null
+          code=$?
+          if [ "$code" -ne 0 ]; then
+            echo "dockscribe self-check failed (exit $code)"
+            exit 1
+          fi
