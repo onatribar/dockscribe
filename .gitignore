@@ -20,6 +20,12 @@ profile.cov
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
+# Built CLI binary
+/dockscribe
+
+# GoReleaser build output
+/dist/
+
 # Go workspace file
 go.work
 go.work.sum
@@ -30,3 +36,6 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Claude Code local settings (per-machine, not shared)
+.claude/settings.local.json
