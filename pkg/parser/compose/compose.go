@@ -46,7 +46,7 @@ type File struct {
 
 func (f *File) FileType() string   { return "compose" }
 func (f *File) RawLines() []string { return f.lines }
-func (f *File) ServiceCount() int { return len(f.Services) }
+func (f *File) ServiceCount() int  { return len(f.Services) }
 
 func (f *File) ServiceByName(name string) (Service, bool) {
 	for _, s := range f.Services {
@@ -84,7 +84,7 @@ func (p *Parser) Parse(src []byte) (parser.ParsedFile, error) {
 		return nil, fmt.Errorf("not valid YAML: %w", err)
 	}
 	if len(doc.Content) == 0 {
-		return f, nil 
+		return f, nil
 	}
 
 	root := doc.Content[0]

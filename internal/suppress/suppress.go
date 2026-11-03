@@ -16,7 +16,6 @@ var ignoreRe = regexp.MustCompile(`(?i)^\s*#\s*dockscribe-ignore\b(.*)$`)
 
 type Suppressions map[int]map[string]bool
 
-
 func Parse(lines []string) Suppressions {
 	out := Suppressions{}
 	for i, line := range lines {

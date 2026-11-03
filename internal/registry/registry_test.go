@@ -1,10 +1,10 @@
 package registry
 
 import (
+	"github.com/onatribar/dockscribe/pkg/analyzer"
 	"os"
 	"path/filepath"
 	"testing"
-	"github.com/onatribar/dockscribe/pkg/analyzer"
 )
 
 func ruleIDs(t *testing.T, path string) map[string]bool {
