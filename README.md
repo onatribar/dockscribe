@@ -7,25 +7,58 @@
 dockscribe is an offline CLI tool that audits Dockerfiles and Compose files, flags security and performance problems, and fixes the safe ones automatically.
 
 ```
-$ dockscribe --no-explain --only security testdata/dockerfiles/insecure.Dockerfile
-File: testdata/dockerfiles/insecure.Dockerfile (12 lines, 1 stage)
+$ dockscribe Dockerfile
+File: Dockerfile (3 lines, 1 stage)
+
+---
+
+EXPLANATION
+L1    Base image: node:18-alpine - starts build stage 0.
+L2    Copies . into the image at ..
+L3    Default startup command: ["node", "server.js"].
 
 ---
 
 SECURITY
-L12   [S001] [ERROR] Container runs as root - no non-root USER instruction found in the final stage.
-L12   [S007] [INFO] No HEALTHCHECK defined.
-L1    [S005] [INFO] Base image "ubuntu:latest" uses a mutable tag (latest).
-L3    [S003] [WARN] ARG "GITHUB_TOKEN" looks like it holds a secret.
-L4    [S003] [WARN] ENV "API_SECRET" looks like it holds a secret.
-L6    [S002] [WARN] ADD fetches a remote URL directly into the image.
-L7    [S006] [WARN] Pipes a remote script directly into a shell.
+L3    [S001] [ERROR] Container runs as root - no non-root USER instruction found in the final stage.
+      Add a USER instruction (e.g. `USER app`) before CMD/ENTRYPOINT so the container does not run as root at runtime.
+L3    [S007] [INFO] No HEALTHCHECK defined.
+      Add a HEALTHCHECK instruction so orchestrators can detect and route around an unhealthy container.
+L1    [S018] [WARN] Base image "node:18-alpine" appears to be end-of-life.
+      This Node.js release line is past its end-of-life date (nodejs.org releases) and receives no security patches. (This is a static, best-effort list and may be out of date - verify against the vendor's own support page.)
 L1    [S019] [WARN] Broad COPY with no .dockerignore file.
+      Without a .dockerignore, `COPY . .` sends everything in the build context to the daemon and into the image - including .git history, .env files, and credentials that happen to sit in the project directory. Add one that excludes at least .git, .env, and any local credential files.
 
 ---
 
-Summary: 1 error, 5 warnings, 2 info
-Score: 58/100 (D)
+PERFORMANCE
+L1    [P005] [INFO] No multi-stage build detected.
+      Build tooling and intermediate artifacts stay in the final image. Split into a `builder` stage and COPY only the built output into a slim final stage.
+L1    [P011] [INFO] Broad COPY with no .dockerignore file.
+      Without a .dockerignore, the entire build context (including node_modules, .git, and other large or generated directories) is sent to the daemon and can invalidate the build cache on every unrelated change.
+
+---
+
+Summary: 1 error, 2 warnings, 6 info
+Score: 72/100 (C)
+```
+
+`--fix` applies the safe part of that automatically:
+
+```
+$ cat Dockerfile
+FROM ubuntu:22.04
+RUN apt-get update && apt-get install -y curl
+
+$ dockscribe --fix Dockerfile
+Fixed Dockerfile:
+  L2: P002, P008
+...
+Score: 98/100 (A)
+
+$ cat Dockerfile
+FROM ubuntu:22.04
+RUN apt-get update && apt-get install --no-install-recommends -y curl && rm -rf /var/lib/apt/lists/*
 ```
 
 Compose files go through the identical pipeline, down to resolving a service's `build:` reference
@@ -33,7 +66,7 @@ against the actual Dockerfile it builds from.
 
 ## Install
 
-Until I add prebuilt binaries, build from source (requires Go 1.26+):
+Download a prebuilt binary from the [releases page](https://github.com/onatribar/dockscribe/releases) or build from source (requires Go 1.26+):
 
 ```sh
 go install github.com/onatribar/dockscribe@latest
@@ -188,3 +221,7 @@ build stages, so a secret left behind in a `builder` stage that leaks into the f
 
 `pkg/` is a plain importable Go library with no dependency on the CLI. If you want the analysis
 engine in your own tool rather than this one, that's where it lives!
+
+## Contributing
+
+Want a rule that isn't here? Found a false-positive? Open an issue or PR, and I'll look into it!
