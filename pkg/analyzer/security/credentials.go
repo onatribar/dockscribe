@@ -3,6 +3,7 @@ package security
 import (
 	"fmt"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -96,12 +97,28 @@ func instructionVarValues(instr dockerfile.Instruction) map[string]string {
 
 // S015: ARG promoted into ENV
 
+var (
+	bareVarRefPattern   = regexp.MustCompile(`^\$([A-Za-z_][A-Za-z0-9_]*)$`)
+	bracedVarRefPattern = regexp.MustCompile(`^\$\{([A-Za-z_][A-Za-z0-9_]*)(:?[+\-=?].*)?\}$`)
+)
+
+func referencedVarName(value string) (name string, ok bool) {
+	value = strings.TrimSpace(value)
+	if m := bareVarRefPattern.FindStringSubmatch(value); m != nil {
+		return m[1], true
+	}
+	if m := bracedVarRefPattern.FindStringSubmatch(value); m != nil {
+		return m[1], true
+	}
+	return "", false
+}
+
 func checkArgPromotedToEnv(instr dockerfile.Instruction, secretArgs map[string]bool) []analyzer.Finding {
 	var findings []analyzer.Finding
 	values := instructionVarValues(instr)
 	for _, name := range analyzer.SortedKeys(values) {
-		ref := strings.Trim(values[name], "${}")
-		if !secretArgs[ref] {
+		ref, isRef := referencedVarName(values[name])
+		if !isRef || !secretArgs[ref] {
 			continue
 		}
 		findings = append(findings, analyzer.Finding{

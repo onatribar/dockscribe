@@ -191,6 +191,20 @@ func TestArgPromotedToEnv(t *testing.T) {
 			t.Error("did not expect S015 for a non-secret-like ARG")
 		}
 	})
+
+	t.Run("braced form with a bash default-value expansion still matches", func(t *testing.T) {
+		src := "FROM alpine\nARG BUILD_SECRET\nENV BUILD_SECRET=${BUILD_SECRET:-}\nUSER app\n"
+		if !ruleIDs(analyze(t, src, ""))["S015"] {
+			t.Error("expected S015 for ${ARG:-default} promotion, not just bare $ARG")
+		}
+	})
+
+	t.Run("a literal value that merely matches the ARG's name isn't a promotion", func(t *testing.T) {
+		src := "FROM alpine\nARG BUILD_SECRET\nENV BUILD_SECRET=BUILD_SECRET\nUSER app\n"
+		if ruleIDs(analyze(t, src, ""))["S015"] {
+			t.Error("did not expect S015 for a literal string, not an actual $ARG reference")
+		}
+	})
 }
 
 func TestArgUsedInRun(t *testing.T) {
