@@ -2,6 +2,7 @@ package security
 
 import (
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
 
@@ -212,11 +213,16 @@ func collectStageIntroductions(df *dockerfile.File, stageIdx int) (introduced []
 			}
 			dest := positional[len(positional)-1]
 			sources := positional[:len(positional)-1]
+			destIsDir := len(sources) > 1 || strings.HasSuffix(dest, "/")
 			for _, src := range sources {
-				if matchesSensitivePattern(src) {
-					introduced = append(introduced, sensitiveIntroduction{path: dest, line: instr.Line})
-					break
+				if !matchesSensitivePattern(src) {
+					continue
 				}
+				introPath := dest
+				if destIsDir {
+					introPath = strings.TrimSuffix(dest, "/") + "/" + path.Base(src)
+				}
+				introduced = append(introduced, sensitiveIntroduction{path: introPath, line: instr.Line})
 			}
 		case "RUN":
 			a, ok := shellcmd.Analyze(dockerfile.StripLeadingRunFlags(instr.Args))

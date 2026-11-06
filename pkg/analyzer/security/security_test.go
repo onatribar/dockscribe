@@ -310,6 +310,13 @@ func TestCrossLayerPersistence(t *testing.T) {
 			t.Error("did not expect S017 when the file is never removed")
 		}
 	})
+
+	t.Run("multi-source COPY into a directory still tracks each file's own path", func(t *testing.T) {
+		src := "FROM alpine\nCOPY id_rsa app.py /dest/\nRUN rm /dest/id_rsa\nUSER app\n"
+		if !ruleIDs(analyze(t, src, ""))["S017"] {
+			t.Error("expected S017: an exact-file rm of a multi-source COPY's destination should still match")
+		}
+	})
 }
 
 func TestCrossStageSecretLeak(t *testing.T) {
@@ -335,6 +342,18 @@ func TestCrossStageSecretLeak(t *testing.T) {
 			"USER app\n"
 		if !ruleIDs(analyze(t, src, ""))["S024"] {
 			t.Error("expected S024 for an exact-path copy of a leftover secret")
+		}
+	})
+
+	t.Run("exact file copy of a multi-source COPY's leftover secret", func(t *testing.T) {
+		src := "FROM golang AS builder\n" +
+			"COPY id_rsa app.py /dest/\n" +
+			"RUN go build -o /out/app .\n" +
+			"\nFROM alpine\n" +
+			"COPY --from=builder /dest/id_rsa /stolen\n" +
+			"USER app\n"
+		if !ruleIDs(analyze(t, src, ""))["S024"] {
+			t.Error("expected S024: an exact-path COPY --from of a multi-source destination's file should still match")
 		}
 	})
 
