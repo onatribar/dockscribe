@@ -19,11 +19,15 @@ func checkCurlPipeShell(a shellcmd.Analysis, instr dockerfile.Instruction) []ana
 	// adjacency list of "pipes into" relationships so a relay chain can be identified
 	adj := map[string][]string{}
 	for _, pair := range a.PipePairs {
+		from := pair.From.Name
+		if from == "sudo" && len(pair.From.Args) > 0 {
+			from = pair.From.Args[0]
+		}
 		to := pair.To.Name
 		if to == "sudo" && len(pair.To.Args) > 0 {
 			to = pair.To.Args[0]
 		}
-		adj[pair.From.Name] = append(adj[pair.From.Name], to)
+		adj[from] = append(adj[from], to)
 	}
 
 	for start := range adj {
