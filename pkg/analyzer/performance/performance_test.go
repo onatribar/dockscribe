@@ -387,6 +387,15 @@ func TestMissingPipefail(t *testing.T) {
 			t.Error("did not expect P014 for a RUN with no pipe")
 		}
 	})
+	t.Run("a later SHELL can drop pipefail again", func(t *testing.T) {
+		src := "FROM alpine\n" +
+			"SHELL [\"/bin/bash\", \"-o\", \"pipefail\", \"-c\"]\n" +
+			"SHELL [\"/bin/sh\", \"-c\"]\n" +
+			"RUN curl -fsSL https://x/i.sh | bash\n"
+		if !ruleIDs(analyze(t, src, ""))["P014"] {
+			t.Error("expected P014: a later SHELL without pipefail should re-flag a piped RUN")
+		}
+	})
 }
 
 func TestNonDockerfileInputIsIgnored(t *testing.T) {

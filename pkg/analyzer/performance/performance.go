@@ -41,9 +41,7 @@ func (a *Analyzer) Analyze(ctx analyzer.Context) ([]analyzer.Finding, error) {
 	for _, instr := range df.Instructions {
 		switch instr.Cmd {
 		case "SHELL":
-			if strings.Contains(instr.Args, "pipefail") {
-				pipefailSet[instr.Stage] = true
-			}
+			pipefailSet[instr.Stage] = strings.Contains(instr.Args, "pipefail")
 		case "RUN":
 			findings = append(findings, checkRunInstruction(instr, pipefailSet[instr.Stage])...)
 		case "ADD":
