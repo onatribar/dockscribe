@@ -39,7 +39,11 @@ func applyFixesToFile(reg *registry.Registry, path string, original []byte, df *
 	}
 
 	newLines := append([]string(nil), df.RawLines()...)
-	var applied []string
+	type appliedFix struct {
+		line int
+		msg  string
+	}
+	var applied []appliedFix
 
 	for line, ruleIDs := range byLine {
 		instr, ok := df.InstructionAt(line)
@@ -61,13 +65,13 @@ func applyFixesToFile(reg *registry.Registry, path string, original []byte, df *
 		}
 		newLines[line-1] = cmd + " " + args
 		sort.Strings(fixedRules)
-		applied = append(applied, fmt.Sprintf("L%d: %s", line, strings.Join(fixedRules, ", ")))
+		applied = append(applied, appliedFix{line: line, msg: fmt.Sprintf("L%d: %s", line, strings.Join(fixedRules, ", "))})
 	}
 
 	if len(applied) == 0 {
 		return original, nil
 	}
-	sort.Strings(applied)
+	sort.Slice(applied, func(i, j int) bool { return applied[i].line < applied[j].line })
 
 	newContent := []byte(strings.Join(newLines, "\n") + "\n")
 
@@ -80,8 +84,8 @@ func applyFixesToFile(reg *registry.Registry, path string, original []byte, df *
 	}
 
 	fmt.Fprintf(out, "Fixed %s:\n", path)
-	for _, line := range applied {
-		fmt.Fprintf(out, "  %s\n", line)
+	for _, af := range applied {
+		fmt.Fprintf(out, "  %s\n", af.msg)
 	}
 	return newContent, nil
 }

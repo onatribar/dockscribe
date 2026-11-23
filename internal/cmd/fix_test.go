@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/onatribar/dockscribe/internal/registry"
@@ -69,6 +70,39 @@ func TestApplyFixesToFile(t *testing.T) {
 
 	if !bytes.Contains(out.Bytes(), []byte("P002")) || !bytes.Contains(out.Bytes(), []byte("P004")) || !bytes.Contains(out.Bytes(), []byte("P008")) {
 		t.Errorf("expected the fix summary to mention P002, P004, and P008, got:\n%s", out.String())
+	}
+}
+
+func TestApplyFixesToFileSummaryIsInLineOrder(t *testing.T) {
+	var src strings.Builder
+	src.WriteString("FROM ubuntu:22.04\n")
+	for i := 0; i < 10; i++ {
+		src.WriteString("RUN apt-get install -y curl\n")
+	}
+	path := writeTempDockerfile(t, src.String())
+
+	p := dockerfile.New()
+	content, _ := os.ReadFile(path)
+	parsed, err := p.Parse(content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	df := parsed.(*dockerfile.File)
+	ctx := analyzer.Context{File: parsed, Dir: filepath.Dir(path)}
+
+	var out bytes.Buffer
+	reg := registry.New()
+	if _, err := applyFixesToFile(reg, path, content, df, ctx, suppress.Suppressions{}, &out); err != nil {
+		t.Fatalf("applyFixesToFile: %v", err)
+	}
+
+	l2 := strings.Index(out.String(), "L2:")
+	l10 := strings.Index(out.String(), "L10:")
+	if l2 == -1 || l10 == -1 {
+		t.Fatalf("expected both L2 and L10 in the fix summary, got:\n%s", out.String())
+	}
+	if l2 > l10 {
+		t.Errorf("expected L2 to print before L10 (numeric order), got:\n%s", out.String())
 	}
 }
 
