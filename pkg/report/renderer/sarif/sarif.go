@@ -46,7 +46,7 @@ func (r *Renderer) Render(rep report.Report) error {
 			Message: message{Text: text},
 			Locations: []location{{PhysicalLocation: physicalLocation{
 				ArtifactLocation: artifactLocation{URI: uri},
-				Region: region{StartLine: max(f.Line, 1)},
+				Region:           region{StartLine: max(f.Line, 1)},
 			}}},
 		})
 	}
