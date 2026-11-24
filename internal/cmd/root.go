@@ -20,6 +20,7 @@ import (
 	"github.com/onatribar/dockscribe/pkg/parser/dockerfile"
 	"github.com/onatribar/dockscribe/pkg/report"
 	jsonrenderer "github.com/onatribar/dockscribe/pkg/report/renderer/json"
+	sarifrenderer "github.com/onatribar/dockscribe/pkg/report/renderer/sarif"
 	textrenderer "github.com/onatribar/dockscribe/pkg/report/renderer/text"
 	"github.com/onatribar/dockscribe/pkg/report/score"
 )
@@ -54,7 +55,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.Flags().StringVar(&formatFlag, "format", "text", `output format: "text" or "json"`)
+	rootCmd.Flags().StringVar(&formatFlag, "format", "text", `output format: "text", "json", or "sarif"`)
 	rootCmd.Flags().StringVar(&severityFlag, "severity", "info", `minimum severity to report: "info", "warning", or "error"`)
 	rootCmd.Flags().BoolVar(&noExplainFlag, "no-explain", false, "skip the explanation pass; show only findings")
 	rootCmd.Flags().StringVar(&onlyFlag, "only", "", `run a single analysis category: "security" or "performance"`)
@@ -103,13 +104,17 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	var render func(report.Report) error
+	finish := func() error { return nil } // for renderers that emit one document after every file, not one per file
 	switch formatFlag {
 	case "text":
 		render = textrenderer.New(cmd.OutOrStdout()).Render
 	case "json":
 		render = jsonrenderer.New(cmd.OutOrStdout()).Render
+	case "sarif":
+		r := sarifrenderer.New(cmd.OutOrStdout(), version)
+		render, finish = r.Render, r.Finish
 	default:
-		return fmt.Errorf(`invalid --format %q: must be "text" or "json"`, formatFlag)
+		return fmt.Errorf(`invalid --format %q: must be "text", "json", or "sarif"`, formatFlag)
 	}
 
 	files := args
@@ -144,6 +149,9 @@ func run(cmd *cobra.Command, args []string) error {
 		if !failOnNever && exceeded >= failOnThreshold {
 			exitCode = 1
 		}
+	}
+	if err := finish(); err != nil {
+		return err
 	}
 
 	if writeBaselineFlag != "" {

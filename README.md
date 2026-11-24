@@ -82,8 +82,9 @@ SYNOPSIS
     for every Dockerfile/Compose file in it.
 
 OPTIONS
-    --format text|json
-        Output format. Default: text.
+    --format text|json|sarif
+        Output format. Default: text. sarif writes one SARIF 2.1.0 log
+        covering every file scanned for GitHub code scanning.
 
     --severity info|warning|error
         Minimum severity to report. Default: info.
@@ -181,6 +182,24 @@ dockscribe --baseline .dockscribe-baseline.json .
 Matching ignores line number and uses `(file, rule, message)` with occurrence counting, so an
 unrelated edit elsewhere in the file won't make an already-accepted finding look new.
 `--write-baseline` always exits `0`.
+
+## Findings on GitHub pull requests
+
+`--format sarif` output can be uploaded to GitHub code scanning, which shows each finding as an
+annotation on the exact line in the PR diff and in the repo's Security tab. Example use-case:
+
+```yaml
+permissions:
+  security-events: write
+
+steps:
+  - uses: actions/checkout@v4
+  - run: go install github.com/onatribar/dockscribe@latest
+  - run: dockscribe --format sarif --fail-on never . > dockscribe.sarif
+  - uses: github/codeql-action/upload-sarif@v3
+    with:
+      sarif_file: dockscribe.sarif
+```
 
 ## Why not just ask an LLM to read the Dockerfile?
 
